@@ -335,7 +335,7 @@ class Node:
     """Node interface for GraphQL types.
 
     Subclasses must type the id field using `NodeID`. It will be private to the
-    schema because it will be converted to a global ID and exposed as `id: GlobalID!`
+    schema because it will be converted to a global ID and exposed as `id: ID!`
 
     The following methods can also be implemented:
         resolve_id:
@@ -389,18 +389,18 @@ class Node:
 
         if inspect.isawaitable(node_id):
             return cast(
-                GlobalID,
+                ID,
                 resolve_awaitable(
                     node_id,
-                    lambda resolved: GlobalID(
+                    lambda resolved: ID(
                         type_name=type_name,
                         node_id=str(resolved),
                     ),
                 ),
             )
 
-        # If node_id is not str, GlobalID will raise an error for us
-        return GlobalID(type_name=type_name, node_id=str(node_id))
+        # If node_id is not str, ID will raise an error for us
+        return ID(type_name=type_name, node_id=str(node_id))
 
     @classmethod
     def resolve_id_attr(cls) -> str:
