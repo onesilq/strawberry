@@ -44,7 +44,7 @@ from strawberry.types.fields.resolver import StrawberryResolver
 from strawberry.utils.aio import asyncgen_to_list
 from strawberry.utils.typing import eval_type
 
-from .types import Connection, GlobalID, Node, NodeIterableType, NodeType
+from .types import Connection, ID, Node, NodeIterableType, NodeType
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
@@ -85,7 +85,7 @@ class NodeExtension(FieldExtension):
 
         def resolver(
             info: Info,
-            id: Annotated[GlobalID, argument(description="The ID of the object.")],
+            id: Annotated[ID, argument(description="The ID of the object.")],
         ):
             return id.resolve_type(info).resolve_node(
                 id.node_id,
@@ -103,14 +103,14 @@ class NodeExtension(FieldExtension):
         def resolver(
             info: Info,
             ids: Annotated[
-                List[GlobalID], argument(description="The IDs of the objects.")
+                List[ID], argument(description="The IDs of the objects.")
             ],
         ):
             nodes_map: DefaultDict[Type[Node], List[str]] = defaultdict(list)
             # Store the index of the node in the list of nodes of the same type
             # so that we can return them in the same order while also supporting
             # different types
-            index_map: Dict[GlobalID, Tuple[Type[Node], int]] = {}
+            index_map: Dict[ID, Tuple[Type[Node], int]] = {}
             for gid in ids:
                 node_t = gid.resolve_type(info)
                 nodes_map[node_t].append(gid.node_id)
