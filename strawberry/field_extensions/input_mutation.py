@@ -4,6 +4,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
+    Optional,
 )
 
 import strawberry
@@ -22,6 +23,13 @@ if TYPE_CHECKING:
 
 
 class InputMutationExtension(FieldExtension):
+
+    def __init__(
+        self, input_field_name: str = "input", input_type_name: Optional[str] = None
+    ) -> None:
+        self.input_field_name = input_field_name
+        self.input_type_name = input_type_name
+
     def apply(self, field: StrawberryField) -> None:
         resolver = field.base_resolver
         assert resolver
@@ -48,10 +56,11 @@ class InputMutationExtension(FieldExtension):
             ]
 
         caps_name = capitalize_first(name)
-        new_type = strawberry.input(type(f"{caps_name}Input", (), type_dict))
+        input_type_name = self.input_type_name or f"{caps_name}Input"
+        new_type = strawberry.input(type(input_type_name, (), type_dict))
         field.arguments = [
             StrawberryArgument(
-                python_name="input",
+                python_name=self.input_field_name,
                 graphql_name=None,
                 type_annotation=StrawberryAnnotation(
                     new_type,
@@ -68,7 +77,7 @@ class InputMutationExtension(FieldExtension):
         info: Info,
         **kwargs: Any,
     ) -> Any:
-        input_args = kwargs.pop("input")
+        input_args = kwargs.pop(self.input_field_name)
         return next_(
             source,
             info,
@@ -83,7 +92,7 @@ class InputMutationExtension(FieldExtension):
         info: Info,
         **kwargs: Any,
     ) -> Any:
-        input_args = kwargs.pop("input")
+        input_args = kwargs.pop(self.input_field_name)
         return await next_(
             source,
             info,
