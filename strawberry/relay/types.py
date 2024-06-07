@@ -33,6 +33,7 @@ from strawberry.custom_scalar import scalar
 from strawberry.object_type import interface, type
 from strawberry.private import StrawberryPrivate
 from strawberry.relay.exceptions import NodeIDAnnotationError
+from strawberry.schema_directive import Location, schema_directive
 from strawberry.type import StrawberryContainer, get_object_definition
 from strawberry.types.info import Info  # noqa: TCH001
 from strawberry.types.types import StrawberryObjectDefinition
@@ -62,6 +63,24 @@ NodeIterableType: TypeAlias = Union[
 NodeType = TypeVar("NodeType", bound="Node")
 
 PREFIX = "arrayconnection"
+
+
+@dataclasses.dataclass
+class ImportedFrom:
+    name: str
+    url: str = "https://specs.apollo.dev/federation/v2.3"
+
+
+@schema_directive(
+    locations=[Location.FIELD_DEFINITION, Location.OBJECT],
+    name="federation__shareable",
+    repeatable=True,
+    print_definition=False,
+)
+class Shareable:
+    imported_from: ClassVar[ImportedFrom] = ImportedFrom(
+        name="shareable", url="https://specs.apollo.dev/federation/v2.3"
+    )
 
 
 class GlobalIDValueError(ValueError):
@@ -314,6 +333,7 @@ class GlobalID:
 
         return node
 
+
 ID = scalar(
     NewType("ID", GlobalID),
     description="ID in the Global ID format, a base64 encoded string that"
@@ -323,6 +343,7 @@ ID = scalar(
     serialize=str,
     parse_value=GlobalID.from_id,
 )
+
 
 class NodeIDPrivate(StrawberryPrivate):
     """Annotate a type attribute as its id.
@@ -644,15 +665,19 @@ class PageInfo:
     """
 
     has_next_page: bool = field(
+        directives=[Shareable()],
         description="When paginating forwards, are there more items?",
     )
     has_previous_page: bool = field(
+        directives=[Shareable()],
         description="When paginating backwards, are there more items?",
     )
     start_cursor: Optional[str] = field(
+        directives=[Shareable()],
         description="When paginating backwards, the cursor to continue.",
     )
     end_cursor: Optional[str] = field(
+        directives=[Shareable()],
         description="When paginating forwards, the cursor to continue.",
     )
 
