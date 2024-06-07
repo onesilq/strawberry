@@ -27,12 +27,13 @@ from typing import (
 )
 from typing_extensions import Annotated, Literal, Self, TypeAlias, get_args, get_origin
 
+from strawberry.custom_scalar import scalar
 from strawberry.field import field
 from strawberry.lazy_type import LazyType
-from strawberry.custom_scalar import scalar
 from strawberry.object_type import interface, type
 from strawberry.private import StrawberryPrivate
 from strawberry.relay.exceptions import NodeIDAnnotationError
+from strawberry.schema_directive import Location, schema_directive
 from strawberry.type import StrawberryContainer, get_object_definition
 from strawberry.types.info import Info  # noqa: TCH001
 from strawberry.types.types import StrawberryObjectDefinition
@@ -43,7 +44,6 @@ from strawberry.utils.typing import eval_type, is_classvar
 from .utils import from_base64, to_base64
 
 if TYPE_CHECKING:
-    from strawberry.scalars import ID
     from strawberry.utils.await_maybe import AwaitableOrValue
 
 _T = TypeVar("_T")
@@ -57,6 +57,28 @@ NodeIterableType: TypeAlias = Union[
 NodeType = TypeVar("NodeType", bound="Node")
 
 PREFIX = "arrayconnection"
+
+
+# Copied from federation.schema_directives to avoid depending on that module
+@dataclasses.dataclass
+class ImportedFrom:
+    name: str
+    url: str = "https://specs.apollo.dev/federation/v2.3"
+
+
+@schema_directive(
+    locations=[Location.FIELD_DEFINITION, Location.OBJECT],
+    name="federation__shareable",
+    repeatable=True,
+    print_definition=False,
+)
+class Shareable:
+    imported_from: ClassVar[ImportedFrom] = ImportedFrom(
+        name="shareable", url="https://specs.apollo.dev/federation/v2.3"
+    )
+# End copied code
+
+
 
 
 class GlobalIDValueError(ValueError):
@@ -88,7 +110,7 @@ class GlobalID:
     type_name: str
     node_id: str
 
-    def __post_init__(self) -> None:
+    def __post_init__(self):
         if not isinstance(self.type_name, str):
             raise GlobalIDValueError(
                 f"type_name is expected to be a string, found {self.type_name!r}"
@@ -98,7 +120,7 @@ class GlobalID:
                 f"node_id is expected to be a string, found {self.node_id!r}"
             )
 
-    def __str__(self) -> str:
+    def __str__(self):
         return to_base64(self.type_name, self.node_id)
 
     @classmethod
@@ -132,7 +154,8 @@ class GlobalID:
         *,
         required: Literal[True] = ...,
         ensure_type: Type[_T],
-    ) -> _T: ...
+    ) -> _T:
+        ...
 
     @overload
     async def resolve_node(
@@ -141,7 +164,8 @@ class GlobalID:
         *,
         required: Literal[True],
         ensure_type: None = ...,
-    ) -> Node: ...
+    ) -> Node:
+        ...
 
     @overload
     async def resolve_node(
@@ -150,7 +174,8 @@ class GlobalID:
         *,
         required: bool = ...,
         ensure_type: None = ...,
-    ) -> Optional[Node]: ...
+    ) -> Optional[Node]:
+        ...
 
     async def resolve_node(self, info, *, required=False, ensure_type=None) -> Any:
         """Resolve the type name and node id info to the node itself.
@@ -197,11 +222,7 @@ class GlobalID:
                 ensure_type = tuple(get_args(ensure_type))
 
             if not isinstance(node, ensure_type):
-                msg = (
-                    f"Cannot resolve. GlobalID requires {ensure_type}, received {node!r}. "
-                    "Verify that the supplied ID is intended for this Query/Mutation/Subscription."
-                )
-                raise TypeError(msg)
+                raise TypeError(f"{ensure_type} expected, found {node!r}")
 
         return node
 
@@ -216,6 +237,7 @@ class GlobalID:
             The resolved GraphQL type for the execution info
 
         """
+        schema = info.schema
         type_def = info.schema.get_type_by_name(self.type_name)
         assert isinstance(type_def, StrawberryObjectDefinition)
 
@@ -234,7 +256,8 @@ class GlobalID:
         *,
         required: Literal[True] = ...,
         ensure_type: Type[_T],
-    ) -> _T: ...
+    ) -> _T:
+        ...
 
     @overload
     def resolve_node_sync(
@@ -243,7 +266,8 @@ class GlobalID:
         *,
         required: Literal[True],
         ensure_type: None = ...,
-    ) -> Node: ...
+    ) -> Node:
+        ...
 
     @overload
     def resolve_node_sync(
@@ -252,7 +276,8 @@ class GlobalID:
         *,
         required: bool = ...,
         ensure_type: None = ...,
-    ) -> Optional[Node]: ...
+    ) -> Optional[Node]:
+        ...
 
     def resolve_node_sync(self, info, *, required=False, ensure_type=None) -> Any:
         """Resolve the type name and node id info to the node itself.
@@ -293,23 +318,19 @@ class GlobalID:
                 ensure_type = tuple(get_args(ensure_type))
 
             if not isinstance(node, ensure_type):
-                msg = (
-                    f"Cannot resolve. GlobalID requires {ensure_type}, received {node!r}. "
-                    "Verify that the supplied ID is intended for this Query/Mutation/Subscription."
-                )
-                raise TypeError(msg)
+                raise TypeError(f"{ensure_type} expected, found {node!r}")
 
         return node
 
-ID = scalar(
-    NewType("ID", GlobalID),
+ID = scalar(NewType("ID", GlobalID),
     description="ID in the Global ID format, a base64 encoded string that"
     "wraps the type and the internal id of the object."
     "This is a specialization of the strawberry.ID type, which can be any string.",
     specified_by_url="https://graphql.org/learn/global-object-identification/",
-    serialize=str,
-    parse_value=GlobalID.from_id,
+     serialize=str,
+     parse_value=GlobalID.from_id
 )
+
 
 class NodeIDPrivate(StrawberryPrivate):
     """Annotate a type attribute as its id.
@@ -490,7 +511,8 @@ class Node:
         info: Info,
         node_ids: Iterable[str],
         required: Literal[True],
-    ) -> AwaitableOrValue[Iterable[Self]]: ...
+    ) -> AwaitableOrValue[Iterable[Self]]:
+        ...
 
     @overload
     @classmethod
@@ -500,7 +522,8 @@ class Node:
         info: Info,
         node_ids: Iterable[str],
         required: Literal[False] = ...,
-    ) -> AwaitableOrValue[Iterable[Optional[Self]]]: ...
+    ) -> AwaitableOrValue[Iterable[Optional[Self]]]:
+        ...
 
     @overload
     @classmethod
@@ -513,7 +536,8 @@ class Node:
     ) -> Union[
         AwaitableOrValue[Iterable[Self]],
         AwaitableOrValue[Iterable[Optional[Self]]],
-    ]: ...
+    ]:
+        ...
 
     @classmethod
     def resolve_nodes(
@@ -557,7 +581,8 @@ class Node:
         *,
         info: Info,
         required: Literal[True],
-    ) -> AwaitableOrValue[Self]: ...
+    ) -> AwaitableOrValue[Self]:
+        ...
 
     @overload
     @classmethod
@@ -567,7 +592,8 @@ class Node:
         *,
         info: Info,
         required: Literal[False] = ...,
-    ) -> AwaitableOrValue[Optional[Self]]: ...
+    ) -> AwaitableOrValue[Optional[Self]]:
+        ...
 
     @overload
     @classmethod
@@ -577,7 +603,8 @@ class Node:
         *,
         info: Info,
         required: bool,
-    ) -> AwaitableOrValue[Optional[Self]]: ...
+    ) -> AwaitableOrValue[Optional[Self]]:
+        ...
 
     @classmethod
     def resolve_node(
@@ -631,16 +658,20 @@ class PageInfo:
     """
 
     has_next_page: bool = field(
+        directives=[Shareable()],
         description="When paginating forwards, are there more items?",
     )
     has_previous_page: bool = field(
+        directives=[Shareable()],
         description="When paginating backwards, are there more items?",
     )
     start_cursor: Optional[str] = field(
+        directives=[Shareable()],
         description="When paginating backwards, the cursor to continue.",
     )
     end_cursor: Optional[str] = field(
-        description="When paginating forwards, the cursor to continue.",
+        directives=[Shareable()],
+         description="When paginating forwards, the cursor to continue.",
     )
 
 
@@ -807,20 +838,11 @@ class ListConnection(Connection[NodeType]):
 
         if after:
             after_type, after_parsed = from_base64(after)
-            if after_type != PREFIX:
-                # When the base64 hash doesnt exist, the after_type seems to return
-                # arrayconnEction instead of PREFIX. Let's raise a predictable
-                # instead of "An unknown error occurred."
-                raise TypeError("Argument 'after' contains a non-existing value.")
-
+            assert after_type == PREFIX
             start = int(after_parsed) + 1
         if before:
             before_type, before_parsed = from_base64(before)
-            if before_type != PREFIX:
-                # When the base64 hash doesnt exist, the after_type seems to return
-                # arrayconnEction instead of PREFIX. Let's raise a predictable
-                # instead of "An unknown error occurred.
-                raise TypeError("Argument 'before' contains a non-existing value.")
+            assert before_type == PREFIX
             end = int(before_parsed)
 
         if isinstance(first, int):
