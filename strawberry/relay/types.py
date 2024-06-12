@@ -68,18 +68,18 @@ PREFIX = "arrayconnection"
 @dataclasses.dataclass
 class ImportedFrom:
     name: str
-    url: str = "https://specs.apollo.dev/federation/v2.3"
+    url: str = "https://specs.apollo.dev/federation/v2.7"
 
 
 @schema_directive(
     locations=[Location.FIELD_DEFINITION, Location.OBJECT],
-    name="federation__shareable",
+    name="shareable",
     repeatable=True,
     print_definition=False,
 )
 class Shareable:
     imported_from: ClassVar[ImportedFrom] = ImportedFrom(
-        name="shareable", url="https://specs.apollo.dev/federation/v2.3"
+        name="shareable", url="https://specs.apollo.dev/federation/v2.7"
     )
 
 
